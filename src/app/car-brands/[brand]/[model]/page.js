@@ -5,14 +5,24 @@ import { useState, useEffect } from "react";
 
 const servicesData = {
   commonServices: [
-    { name: "Basic Wash", desc: "Exterior wash with premium soap" },
-    { name: "Interior Vacuum", desc: "Deep vacuum cleaning of seats and carpet"},
-    { name: "Tire Shine", desc: "Professional tire cleaning and shine" }
+    { name: "Mechanical Services", desc: "Complete engine, brake, and mechanical system repairs." },
+    { name: "Electrical Works", desc: "Professional automotive electrical diagnostics and repairs." },
+    { name: "Car General Check-Up", desc: "Comprehensive vehicle inspection for overall performance and safety." },
+    { name: "Car Diagnostic & Scanning Services", desc: "Advanced computer diagnostics to detect vehicle faults." },
+    { name: "AC Services (Car Air Conditioning Service)", desc: "Complete car AC inspection, gas refill, and cooling system repair." },
+    { name: "Suspension Repair", desc: "Shock absorber, strut, and suspension system maintenance and repair." }
   ],
+
   specialServices: [
-    { name: "Premium Detailing", desc: "Complete interior and exterior restoration"},
-    { name: "Ceramic Coating", desc: "Long-lasting paint protection"},
-    { name: "Paint Protection", desc: "Advanced paint protection film" }
+    { name: "Automatic Gear Box", desc: "Professional automatic transmission diagnostics and repair services." },
+    { name: "ECM / ECU", desc: "Engine Control Module diagnostics, repair, and programming." },
+    { name: "Key Makings", desc: "Car key duplication and replacement services." },
+    { name: "Sensors Checking", desc: "Inspection and testing of all vehicle sensors for accurate performance." },
+    { name: "Key Programming", desc: "Smart key and transponder programming services." },
+    { name: "ABS (Anti-Locking Braking System)", desc: "ABS diagnostics, module repair, and sensor replacement." },
+    { name: "Air Bags", desc: "Airbag system diagnostics, crash reset, and module repair." },
+    { name: "Central Locking System", desc: "Central locking diagnostics, actuator repair, and remote syncing." },
+    { name: "Electronic Control System (ECU)", desc: "Advanced electronic control unit diagnostics and system repair." }
   ],
 };
 
