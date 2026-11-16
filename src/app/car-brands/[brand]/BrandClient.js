@@ -2,6 +2,7 @@
 
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
+import "../car-brands.css";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -215,39 +216,6 @@ export default function BrandModelsPage({ initialModels = null }) {
         </div>
       </div>
 
-      <style jsx global>{`
-        @keyframes slide-down {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fade-in-up {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes scale-in {
-          from { opacity: 0; transform: scaleX(0); }
-          to { opacity: 1; transform: scaleX(1); }
-        }
-        .animate-slide-down { animation: slide-down 0.6s ease-out; }
-        .animate-fade-in-up { animation: fade-in-up 0.8s ease-out; }
-        .animate-scale-in { animation: scale-in 0.8s ease-out; }
-        .delay-100 { animation-delay: 0.1s; }
-        .delay-200 { animation-delay: 0.2s; }
-        .delay-300 { animation-delay: 0.3s; }
-        
-        .touch-manipulation {
-          touch-action: manipulation;
-          -webkit-tap-highlight-color: transparent;
-        }
-        
-        @media (min-width: 475px) {
-          .xs\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .xs\\:inline { display: inline; }
-          .xs\\:w-20 { width: 5rem; }
-          .xs\\:h-20 { height: 5rem; }
-          .xs\\:h-44 { height: 11rem; }
-        }
-      `}</style>
     </>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import "./car-brands.css";
 import Image from "next/image";
 import Link from "next/link";
 import { mergeBrands } from "./brands";
@@ -232,20 +233,6 @@ export default function CarBrandsPage({ initialBrands = null }) {
         </div>
       </div>
 
-      <style jsx global>{`
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-slideUp {
-          animation: slideUp 0.5s ease-out forwards;
-          opacity: 0;
-        }
-        .touch-manipulation {
-          touch-action: manipulation;
-          -webkit-tap-highlight-color: transparent;
-        }
-      `}</style>
     </>
   );
 }

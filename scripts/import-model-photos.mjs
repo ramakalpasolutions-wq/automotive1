@@ -7,6 +7,8 @@
 //
 // Options: --plan=<file>  where the matching plan is cached (default scripts/backups/model-photo-plan.json)
 //          --skip=<Article title>,<...>   drop matches you judged wrong after the dry run
+//          --brand=<slug>   only save that brand's photos (e.g. after adding a new brand)
+// Brands added to "vehicleBrands" after the plan was made are matched and added to it.
 
 import { MongoClient } from "mongodb";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
@@ -15,6 +17,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 const arg = n => process.argv.find(a => a.startsWith(`--${n}=`))?.split("=").slice(1).join("=");
 const APPLY = process.argv.includes("--apply");
 const PLAN = arg("plan") || "scripts/backups/model-photo-plan.json";
+const ONLY = arg("brand");
 const SKIP = new Set((arg("skip") || "").split(",").map(s => s.trim()).filter(Boolean));
 const UA = "AutomotiveCarCareSite/1.0 (model photo import; https://www.automotivecarcare.in)";
 const env = process.env;
@@ -30,7 +33,7 @@ const BRAND_WORDS = {
   "mercedes-benz": ["mercedesbenz", "mercedesamg", "mercedesmaybach", "maybach"],
   mahindra: ["mahindra"], ford: ["ford"], toyota: ["toyota"], "maruti-suzuki": ["marutisuzuki", "maruti", "suzuki"],
   hyundai: ["hyundai"], kia: ["kia"], honda: ["honda"], renault: ["renault"], nissan: ["nissan", "datsun"],
-  tata: ["tata"], mg: ["mg", "mgmotor", "mgzs", "mgcomet", "mghector", "mgastor", "mggloster", "baojun", "wuling", "roewe"],
+  tata: ["tata"], lexus: ["lexus"], mg: ["mg", "mgmotor", "mgzs", "mgcomet", "mghector", "mgastor", "mggloster", "baojun", "wuling", "roewe"],
 };
 // What to type before the model name when searching.
 const SEARCH_BRAND = { "maruti-suzuki": "Maruti Suzuki", "mercedes-benz": "Mercedes-Benz", mg: "MG", skoda: "Škoda" };
@@ -56,11 +59,12 @@ function brandFor(vb) {
   return carBrands.find(c => { const k = norm(c.name); return k === key || key.startsWith(k) || k === first; });
 }
 
-// ── 1. Build or load the plan ─────────────────────────────────────────────
-let plan = existsSync(PLAN) ? JSON.parse(readFileSync(PLAN, "utf8")) : null;
+// ── 1. Build or extend the plan ───────────────────────────────────────────
+let plan = existsSync(PLAN) ? JSON.parse(readFileSync(PLAN, "utf8")) : { models: [], articles: {} }; // models: {brandSlug, brand, variant, article|null}
+const planned = new Set(plan.models.map(m => m.brandSlug));
+const todo = vehicleBrands.filter(vb => { const cb = brandFor(vb); return !cb || !planned.has(cb.brandSlug); });
 
-if (!plan) {
-  plan = { models: [], articles: {} }; // models: {brandSlug, brand, variant, article|null}
+if (todo.some(brandFor)) {
   const searchCache = {};
   const search = async q => {
     if (searchCache[q]) return searchCache[q];
@@ -75,7 +79,7 @@ if (!plan) {
   // Article title -> bare model name ("Suzuki Baleno (2015)" -> "Baleno").
   const PREFIXES = ["Maruti Suzuki", "Maruti", "Suzuki", "Mercedes-Benz", "Mercedes-AMG", "Mercedes-Maybach",
     "Škoda", "Skoda", "MG Motor", "MG", "Volkswagen", "Audi", "BMW", "Volvo", "Mahindra", "Ford", "Toyota",
-    "Hyundai", "Kia", "Honda", "Renault", "Nissan", "Tata"];
+    "Hyundai", "Kia", "Honda", "Renault", "Nissan", "Tata", "Lexus"];
   const titleModel = title => {
     let t = title.replace(/\s*\(.*?\)\s*/g, " ").trim();
     for (const p of PREFIXES) if (t.toLowerCase().startsWith(p.toLowerCase() + " ")) { t = t.slice(p.length).trim(); break; }
@@ -125,6 +129,7 @@ if (!plan) {
     audi: { A8L: "Audi A8", RS5: "Audi RS 5", "Q8 e-tron": "Audi Q8 e-tron" },
     bmw: { i7: "BMW 7 Series (G70)" },
     volvo: { "C40 Recharge": "Volvo EC40" },
+    lexus: { ES: "Lexus ES", NX: "Lexus NX", RX: "Lexus RX", LX: "Lexus LX", LM: "Lexus LM", LS: "Lexus LS", LC: "Lexus LC" },
     "mercedes-benz": { V220d: "Mercedes-Benz V-Class", "Maybach S": "Mercedes-Maybach S-Class", "Maybach GLS": "Mercedes-Maybach GLS", GLC: "Mercedes-Benz GLC", EQS: "Mercedes-Benz EQS" },
   };
   const aliasFor = (brandSlug, v) =>
@@ -140,7 +145,7 @@ if (!plan) {
     return (pageCache[title] = p && !p.missing && p.thumbnail ? { title: p.title, file: p.pageimage, thumb: p.thumbnail.source } : null);
   };
 
-  for (const vb of vehicleBrands) {
+  for (const vb of todo) {
     const cb = brandFor(vb);
     if (!cb) { console.log(`No carbrands entry for ${vb.name}, skipped`); continue; }
     const words = BRAND_WORDS[cb.brandSlug] || [norm(cb.name)];
@@ -184,7 +189,7 @@ if (!plan) {
   console.log();
 
   // Photographer credit and licence for each photo (Commons).
-  const titles = Object.values(plan.articles).map(a => `File:${a.file}`);
+  const titles = Object.values(plan.articles).filter(a => !a.license).map(a => `File:${a.file}`);
   for (let i = 0; i < titles.length; i += 40) {
     const data = await wiki({ action: "query", titles: titles.slice(i, i + 40).join("|"), prop: "imageinfo", iiprop: "extmetadata|url" }, "commons.wikimedia.org");
     for (const p of data.query?.pages || []) {
@@ -246,6 +251,7 @@ const col = db.collection("carmodels");
 let saved = 0, kept = 0, failed = 0;
 
 for (const g of Object.values(groups)) {
+  if (ONLY && g.brandSlug !== ONLY) continue;
   const a = plan.articles[g.article];
   const existing = await col.findOne({ brandSlug: g.brandSlug, slug: g.slug });
   if (existing?.image && !existing.photoSource) {
