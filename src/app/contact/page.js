@@ -314,7 +314,7 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <h3 className="text-sm font-light text-gray-400 mb-2 tracking-wide uppercase">Phone</h3>
-                        <a href="tel:+91 93927 92067" className="text-white font-light text-lg hover:text-amber-400 transition-colors">
+                        <a href="tel:+919392792067" className="text-white font-light text-lg hover:text-amber-400 transition-colors">
                           +91 93927 92067
                         </a>
                       </div>

@@ -1,10 +1,51 @@
 import Link from "next/link";
 import HeroSlider from "@/components/HeroSlider";
+import JsonLd from "@/components/JsonLd";
+import { cleanName, getAllServices, getCarBrands } from "@/lib/data";
+import { HERO_PREFIX, listObjects, publicUrl } from "@/lib/r2";
+import { SITE } from "@/lib/site";
 
-export default function Home() {
+export const revalidate = 3600;
+
+async function heroImages() {
+  try {
+    return (await listObjects(HERO_PREFIX)).map(o => ({ public_id: o.key, secure_url: publicUrl(o.key) }));
+  } catch {
+    return null; // slider fetches them in the browser instead
+  }
+}
+
+const FAQS = [
+  {
+    q: "Where is Automotive Car Care located?",
+    a: `Automotive Car Care is a multi-brand car service and repair workshop in ${SITE.city}, ${SITE.region}. Call ${SITE.phone} for directions.`,
+  },
+  {
+    q: "Which car brands do you service?",
+    a: "We service all major car brands sold in India, including Maruti Suzuki, Hyundai, Tata, Mahindra, Toyota, Honda, Kia, Volkswagen, Skoda, Renault, Nissan, MG, Ford, BMW, Mercedes-Benz and Audi.",
+  },
+  {
+    q: "What services do you offer?",
+    a: "General service and periodic maintenance, car AC service, electrical and mechanical repairs, suspension repair, computer diagnostics and scanning, ECU/ECM repair and programming, ABS and airbag repair, automatic gearbox repair, sensor checks, central locking, and car key making and programming.",
+  },
+  {
+    q: "How do I book a car service?",
+    a: `Book online at ${SITE.url}/booking by choosing your car brand, model, service and preferred time, or call/WhatsApp ${SITE.phone}.`,
+  },
+];
+
+export default async function Home() {
+  const [images, services, brands] = await Promise.all([heroImages(), getAllServices(), getCarBrands()]);
   return (
     <div className="bg-white">
-      <HeroSlider />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: FAQS.map(f => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+        }}
+      />
+      <HeroSlider initialImages={images} />
 
       {/* Featured Services Grid - Mubashir Style */}
       <section className="py-16 md:py-20 bg-white">
@@ -174,9 +215,9 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-light text-gray-900 mb-8 leading-tight" style={{ fontFamily: 'Georgia, serif' }}>
-                Get Best Service
+                Get the Best Service
                 <br />
-                and 
+                and Advice
               </h2>
               <p className="text-lg md:text-xl text-gray-800 leading-relaxed font-medium">
                 You can now visit us anytime in our working hours to get instant consultation for your car. Get expert advice and know the estimated cost beforehand.
@@ -186,7 +227,7 @@ export default function Home() {
               <p className="text-sm tracking-[0.2em] uppercase text-gray-800 mb-4 font-light">
                 Call Us Any Time
               </p>
-              <a href="tel:+971556062224" className="text-4xl md:text-5xl font-light text-gray-900 hover:text-white transition-colors block mb-6" style={{ fontFamily: 'Georgia, serif' }}>
+              <a href="tel:+919392792067" className="text-4xl md:text-5xl font-light text-gray-900 hover:text-white transition-colors block mb-6" style={{ fontFamily: 'Georgia, serif' }}>
                 +91 93927 92067
               </a>
               <Link href="/contact" className="inline-flex items-center gap-3 px-8 py-4 bg-gray-900 text-white text-sm tracking-[0.2em] uppercase font-light hover:bg-gray-800 transition-all duration-300">
@@ -258,6 +299,56 @@ export default function Home() {
             <h2 className="text-4xl md:text-5xl font-light text-gray-900 leading-tight" style={{ fontFamily: 'Georgia, serif' }}>
               Best Car Services<br /> in Guntur
             </h2>
+          </div>
+        </div>
+      </section>
+
+      {/* All services + brands — internal links help Google find every page */}
+      <section className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl md:text-4xl font-light text-gray-900 mb-4 text-center" style={{ fontFamily: 'Georgia, serif' }}>
+            Car Services in {SITE.city}
+          </h2>
+          <p className="text-gray-600 text-center max-w-3xl mx-auto mb-10">
+            {SITE.name} is a multi-brand car workshop in {SITE.city}, {SITE.region}, for petrol, diesel and automatic cars —
+            from routine servicing to advanced electronics repair.
+          </p>
+          {services.length > 0 && (
+            <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-14">
+              {services.map(s => (
+                <li key={s.slug}>
+                  <Link href={`/services/${s.slug}`} className="block border border-gray-200 rounded-xl px-5 py-4 hover:border-amber-400 hover:shadow transition">
+                    <span className="font-medium text-gray-900">{cleanName(s.name)}</span>
+                    <span className="block text-sm text-gray-500">in {SITE.city} →</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          {brands.length > 0 && (
+            <>
+              <h2 className="text-2xl md:text-3xl font-light text-gray-900 mb-6 text-center" style={{ fontFamily: 'Georgia, serif' }}>
+                Car Brands We Service
+              </h2>
+              <div className="flex flex-wrap justify-center gap-2 mb-14">
+                {brands.filter(b => b.brandSlug).map(b => (
+                  <Link key={b.brandSlug} href={`/car-brands/${b.brandSlug}`} className="border border-gray-200 rounded-full px-4 py-2 text-sm hover:border-amber-400">
+                    {b.name} service
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+          <h2 className="text-2xl md:text-3xl font-light text-gray-900 mb-6 text-center" style={{ fontFamily: 'Georgia, serif' }}>
+            Frequently Asked Questions
+          </h2>
+          <div className="max-w-3xl mx-auto space-y-3">
+            {FAQS.map(f => (
+              <details key={f.q} className="border border-gray-200 rounded-xl p-5">
+                <summary className="font-medium text-gray-900 cursor-pointer">{f.q}</summary>
+                <p className="text-gray-600 mt-3">{f.a}</p>
+              </details>
+            ))}
           </div>
         </div>
       </section>

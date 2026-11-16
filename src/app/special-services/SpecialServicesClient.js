@@ -1,17 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 const DEFAULT_HERO = "/services/special/hero.jpg";
 
-export default function SpecialServicesPage() {
-  const [activeIndex, setActiveIndex] = useState(null);
-  const [specialServices, setSpecialServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const searchParams = useSearchParams();
+export default function SpecialServicesPage({ initialServices = null }) {
+  const [activeIndex, setActiveIndex] = useState(initialServices?.length ? 0 : null);
+  const [specialServices, setSpecialServices] = useState(initialServices || []);
+  const [loading, setLoading] = useState(!initialServices);
+
+  // ?service=<slug> opens that service (read after load so the page stays static)
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get("service");
+    if (!slug || !specialServices.length) return;
+    const idx = specialServices.findIndex(s => s.slug === slug);
+    if (idx >= 0) setActiveIndex(idx);
+  }, [specialServices]);
 
   useEffect(() => {
+    if (initialServices) return; // already rendered on the server
     const fetchServices = async () => {
       try {
         const res = await fetch("/api/special-services");
@@ -20,13 +28,7 @@ export default function SpecialServicesPage() {
           const sorted = (data.services || []).sort((a, b) => a.order - b.order);
           setSpecialServices(sorted);
 
-          const serviceSlug = searchParams.get("service");
-          if (serviceSlug) {
-            const idx = sorted.findIndex(s => s.slug === serviceSlug);
-            setActiveIndex(idx >= 0 ? idx : 0);
-          } else if (sorted.length > 0) {
-            setActiveIndex(0);
-          }
+          if (sorted.length > 0) setActiveIndex(0);
         }
       } catch (error) {
         console.error("Failed to fetch special services:", error);
@@ -35,7 +37,7 @@ export default function SpecialServicesPage() {
       }
     };
     fetchServices();
-  }, [searchParams]);
+  }, [initialServices]);
 
   const activeService = activeIndex !== null ? specialServices[activeIndex] : null;
 
@@ -60,12 +62,12 @@ export default function SpecialServicesPage() {
       >
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 text-center max-w-5xl px-6 animate-fade-in-up">
-          <p className="text-sm tracking-[1.35em] uppercase text-red-400 mb-6">
-            AutoMotive-Car-Care
-          </p>
-          <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold mb-6 leading-tight">
-            {activeService ? activeService.name : "Special Services"}
+          <h1 className="text-sm tracking-[0.5em] uppercase text-red-400 mb-6">
+            Special Car Repairs in Guntur
           </h1>
+          <h2 className="text-6xl md:text-7xl lg:text-8xl font-bold mb-6 leading-tight">
+            {activeService ? activeService.name : "Special Services"}
+          </h2>
           {activeService && (
             <>
               <p className="text-xl md:text-2xl text-white/90 mb-4">{activeService.tagline}</p>
@@ -110,9 +112,14 @@ export default function SpecialServicesPage() {
             <img src={activeService.contentImage} alt={activeService.name}
               className="w-full mb-10 rounded-xl shadow-2xl transition-transform duration-700 hover:scale-105" />
             <h2 className="text-4xl font-light mb-8 text-red-600">{activeService.name}</h2>
-            <p className="text-lg md:text-xl leading-relaxed text-gray-700 animate-fade-in-up">
+            <p className="text-lg md:text-xl leading-relaxed text-gray-700 animate-fade-in-up whitespace-pre-line">
               {activeService.content}
             </p>
+            {activeService.slug && (
+              <Link href={`/services/${activeService.slug}`} className="inline-block mt-8 text-red-700 font-semibold underline">
+                Full details, FAQs and booking →
+              </Link>
+            )}
           </div>
         )}
       </div>

@@ -14,6 +14,8 @@ export const SITE = {
   city: "Guntur",
   region: "Andhra Pradesh",
   country: "IN",
+  // Places customers come from. Used in structured data; edit to match reality.
+  areaServed: ["Guntur", "Mangalagiri", "Tenali", "Amaravati", "Vijayawada", "Narasaraopet", "Chilakaluripet", "Sattenapalli", "Bapatla", "Ponnur"],
   ogImage: "/services/services-hero.png",
   logo: "/logo_.png",
   sameAs: [

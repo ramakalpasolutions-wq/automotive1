@@ -51,6 +51,22 @@ async function carPages() {
   }
 }
 
+async function servicePages() {
+  try {
+    const { getAllServices } = await import("@/lib/data");
+    const services = await withTimeout(getAllServices(), 5000);
+    return services.map(s => ({
+      url: `${SITE_URL}/services/${s.slug}`,
+      lastModified: s.updatedAt || s.createdAt,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    }));
+  } catch (err) {
+    console.warn("sitemap: service pages skipped:", err.message);
+    return [];
+  }
+}
+
 export default async function sitemap() {
   const now = new Date();
   const fixed = [
@@ -63,5 +79,5 @@ export default async function sitemap() {
     { path: "/contact", priority: 0.8, changeFrequency: "yearly" },
   ].map(({ path, ...rest }) => ({ url: `${SITE_URL}${path}`, lastModified: now, ...rest }));
 
-  return [...fixed, ...(await carPages())];
+  return [...fixed, ...(await servicePages()), ...(await carPages())];
 }

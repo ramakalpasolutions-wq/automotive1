@@ -3,15 +3,15 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-export default function HeroSlider() {
-  const [images, setImages] = useState([]);
+export default function HeroSlider({ initialImages = null }) {
+  const [images, setImages] = useState(initialImages || []);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialImages?.length);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
   useEffect(() => {
-    fetchHeroImages();
-  }, []);
+    if (!initialImages?.length) fetchHeroImages();
+  }, [initialImages]);
 
   useEffect(() => {
     if (images.length > 0 && isAutoPlaying) {
@@ -84,7 +84,7 @@ export default function HeroSlider() {
       <section className="relative bg-gradient-to-br from-blue-100 via-blue-100 to-blue-100 text-white py-16 sm:py-20 min-h-[500px] sm:min-h-[600px] lg:min-h-[700px] flex items-center">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold mb-4 sm:mb-6 animate-fade-in">
-            Premium Car Care Services
+            Automotive Car Care — Car Service in Guntur
           </h1>
           <p className="text-lg sm:text-xl md:text-2xl mb-6 sm:mb-8 text-blue-100 max-w-2xl mx-auto px-4">
             Professional automotive care for your vehicle
@@ -108,7 +108,8 @@ export default function HeroSlider() {
         >
           <img
             src={image.secure_url}
-            alt={`Premium Car Service ${index + 1}`}
+            alt={`Car service at Automotive Car Care, Guntur (${index + 1})`}
+            {...(index === 0 ? { fetchPriority: "high" } : { loading: "lazy" })}
             className="w-full h-full object-fit md:object-cover" // Mobile: contain, Desktop+: cover
             style={{
               // Mobile: perfect fit without distortion
@@ -133,7 +134,7 @@ export default function HeroSlider() {
                 Automotive Car Care
               </span>
               <span className="block md:animate-slide-right-l2r md:[--delay:0.3s] bg-gradient-to-r from-blue-400 to-white bg-clip-text text-transparent">
-                Services
+                Car Service in Guntur
               </span>
             </h1>
 

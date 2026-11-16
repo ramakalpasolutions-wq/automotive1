@@ -80,7 +80,7 @@ const businessSchema = {
         addressRegion: SITE.region,
         addressCountry: SITE.country,
       },
-      areaServed: { "@type": "City", name: SITE.city },
+      areaServed: SITE.areaServed.map(name => ({ "@type": "City", name })),
       sameAs: SITE.sameAs,
       hasOfferCatalog: {
         "@type": "OfferCatalog",

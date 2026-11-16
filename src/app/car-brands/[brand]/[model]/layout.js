@@ -1,12 +1,16 @@
 import { pageMeta, titleCase } from "@/lib/site";
+import { getCarModel } from "@/lib/data";
 
 export async function generateMetadata({ params }) {
   const { brand, model } = await params;
-  const name = `${titleCase(brand)} ${titleCase(model)}`;
+  const doc = await getCarModel(brand, model);
+  const name = `${titleCase(brand)} ${doc?.name || titleCase(model)}`;
+  const variants = (doc?.variants || []).filter(v => v !== doc?.name).slice(0, 6);
   return pageMeta({
     title: `${name} Service & Repair`,
-    description: `${name} service and repair in Guntur: general service, AC, electrical, mechanical, ECU and diagnostics by specialists at Automotive Car Care. Book online.`,
+    description: `${name} service and repair in Guntur${variants.length ? ` (all variants incl. ${variants.join(", ")})` : ""}: general service, AC, electrical, ECU, ABS, airbag and diagnostics at Automotive Car Care. Book online.`,
     path: `/car-brands/${brand}/${model}`,
+    ...(doc?.image ? { image: doc.image } : {}),
   });
 }
 

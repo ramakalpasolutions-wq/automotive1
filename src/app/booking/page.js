@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import VehiclePicker from "@/components/VehiclePicker";
 import "./booking.css";
 
 export default function BookingPage() {
   const [generalServices, setGeneralServices] = useState([]);   // from /api/detailed-services
   const [specialServices, setSpecialServices] = useState([]);   // from /api/special-services
   const [vehicleBrands, setVehicleBrands] = useState([]);
-  const [availableModels, setAvailableModels] = useState([]);
+  const [brandLogos, setBrandLogos] = useState([]);     // from /api/car-brands
+  const [modelImages, setModelImages] = useState([]);   // from /api/car-models
   const [selectionMode, setSelectionMode] = useState("single"); // "single" or "multiple"
 
   const [formData, setFormData] = useState({
@@ -56,10 +58,12 @@ export default function BookingPage() {
   // ── Fetch both General + Special services ─────────────────────────────────
   const fetchData = async () => {
     try {
-      const [generalRes, specialRes, brandsRes] = await Promise.all([
+      const [generalRes, specialRes, brandsRes, logosRes, modelsRes] = await Promise.all([
         fetch("/api/detailed-services"),
         fetch("/api/special-services"),
         fetch("/api/vehicle-brands"),
+        fetch("/api/car-brands").catch(() => null),
+        fetch("/api/car-models").catch(() => null),
       ]);
 
       const generalData = generalRes.ok ? await generalRes.json() : {};
@@ -73,6 +77,8 @@ export default function BookingPage() {
         (specialData.services || []).map(s => ({ ...s, type: "special" }))
       );
       setVehicleBrands(brandsData.brands || []);
+      setBrandLogos(logosRes?.ok ? (await logosRes.json()).brands || [] : []);
+      setModelImages(modelsRes?.ok ? (await modelsRes.json()).models || [] : []);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -86,12 +92,9 @@ export default function BookingPage() {
 
   const totalServices = allServices.length;
 
-  // ── Brand change ──────────────────────────────────────────────────────────
-  const handleBrandChange = (e) => {
-    const selectedBrandSlug = e.target.value;
-    setFormData({ ...formData, vehicleBrand: selectedBrandSlug, vehicleModel: "" });
-    const selectedBrand = vehicleBrands.find(b => b.slug === selectedBrandSlug);
-    setAvailableModels(selectedBrand?.models || []);
+  // ── Vehicle brand / model picked in VehiclePicker ─────────────────────────
+  const handleVehicleChange = ({ brand, model }) => {
+    setFormData(prev => ({ ...prev, vehicleBrand: brand, vehicleModel: model }));
   };
 
   const handleChange = (e) => {
@@ -159,6 +162,12 @@ export default function BookingPage() {
       return;
     }
 
+    if (!formData.vehicleBrand || !formData.vehicleModel.trim()) {
+      setMessage("Please select your vehicle brand and model");
+      document.getElementById("vehicle-details")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
     setLoading(true);
     setMessage("");
 
@@ -170,7 +179,7 @@ export default function BookingPage() {
         email: formData.email,
         phone: `${formData.countryCode} ${formData.phone}`,
         vehicleBrand: selectedBrand?.name || formData.vehicleBrand,
-        vehicleModel: formData.vehicleModel,
+        vehicleModel: formData.vehicleModel.trim(),
         bookingDate: formData.bookingDate,
         bookingTime: formData.bookingTime,
         notes: formData.notes,
@@ -225,7 +234,6 @@ export default function BookingPage() {
           notes: "",
         });
         setPhoneError("");
-        setAvailableModels([]);
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
         setMessage(data.error || "Failed to submit booking.");
@@ -619,33 +627,16 @@ export default function BookingPage() {
               </div>
 
               {/* Vehicle Details */}
-              <div>
+              <div id="vehicle-details">
                 <h3 className="form-section-title">Vehicle Details</h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "2rem" }}>
-                  <div>
-                    <label className="form-label">Vehicle Brand *</label>
-                    <select name="vehicleBrand" value={formData.vehicleBrand} onChange={handleBrandChange} required className="form-select">
-                      <option value="">Select brand</option>
-                      {vehicleBrands.map(b => (
-                        <option key={b._id} value={b.slug}>{b.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="form-label">Vehicle Model *</label>
-                    <select
-                      name="vehicleModel" value={formData.vehicleModel}
-                      onChange={handleChange} required
-                      disabled={!formData.vehicleBrand || availableModels.length === 0}
-                      className="form-select"
-                    >
-                      <option value="">{!formData.vehicleBrand ? "Select brand first" : "Select model"}</option>
-                      {availableModels.map((m, i) => (
-                        <option key={i} value={m}>{m}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                <VehiclePicker
+                  brands={vehicleBrands}
+                  logos={brandLogos}
+                  modelImages={modelImages}
+                  brand={formData.vehicleBrand}
+                  model={formData.vehicleModel}
+                  onChange={handleVehicleChange}
+                />
               </div>
 
               {/* Appointment Schedule */}
