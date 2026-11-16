@@ -1,25 +1,23 @@
 import { NextResponse } from "next/server";
-import { v2 as cloudinary } from "cloudinary";
+import { listObjects, publicUrl, HERO_PREFIX } from "@/lib/r2";
 
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-});
+export const dynamic = "force-dynamic";
 
+// Lists homepage hero images stored in Cloudflare R2.
+// Keeps the old response shape (public_id / secure_url / bytes) so the
+// slider and dashboard work unchanged.
 export async function GET() {
   try {
-    // Fetch images from specific folder
-    const result = await cloudinary.api.resources({
-      type: "upload",
-      prefix: "automotive-carcare/hero-images",
-      max_results: 50,
-    });
-
-    return NextResponse.json({ images: result.resources || [] });
+    const objects = await listObjects(HERO_PREFIX);
+    const images = objects.map(o => ({
+      public_id: o.key,
+      secure_url: publicUrl(o.key),
+      bytes: o.size,
+      created_at: o.lastModified,
+    }));
+    return NextResponse.json({ images, count: images.length, success: true });
   } catch (error) {
-    console.error("Error fetching Cloudinary images:", error);
-    return NextResponse.json({ images: [] }, { status: 200 });
+    console.error("Error listing hero images:", error);
+    return NextResponse.json({ images: [], error: error.message });
   }
 }

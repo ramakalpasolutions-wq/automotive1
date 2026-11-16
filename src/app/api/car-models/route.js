@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { deleteObject } from "@/lib/r2";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
@@ -200,7 +201,9 @@ export async function DELETE(req) {
       _id: new ObjectId(id),
     });
 
-    if (!deletedModel.value) {
+    // mongodb v6+ returns the document directly; older versions wrap it in .value
+    const model = deletedModel?.value !== undefined ? deletedModel.value : deletedModel;
+    if (!model) {
       return NextResponse.json(
         { success: false, error: "Model not found" },
         { status: 404 }
@@ -209,15 +212,11 @@ export async function DELETE(req) {
 
     console.log("✅ Car model deleted");
 
-    // Also delete image from Cloudinary
+    // Also delete image from Cloudflare R2
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/cloudinary-delete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ publicId: deletedModel.value.cloudinaryPublicId }),
-      });
-    } catch (cloudinaryError) {
-      console.warn("⚠️ Failed to delete image from Cloudinary:", cloudinaryError);
+      await deleteObject(model.cloudinaryPublicId);
+    } catch (storageError) {
+      console.warn("⚠️ Failed to delete image from R2:", storageError);
     }
 
     return NextResponse.json({

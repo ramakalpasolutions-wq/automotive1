@@ -11,21 +11,62 @@ const SVG = ({ path, className = "icon-md" }) => (
   </svg>
 );
 
-const uploadToCloudinary = async (file, folder) => {
-  const sig = await fetch(`/api/upload-signature?folder=${folder}`).then(r => r.json());
-  if (sig.error) throw new Error(sig.error);
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("timestamp", sig.timestamp);
-  fd.append("signature", sig.signature);
-  fd.append("api_key", sig.apiKey);
-  fd.append("folder", sig.folder);
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`,
-    { method: "POST", body: fd }
-  ).then(r => r.json());
-  if (res.error) throw new Error(res.error.message);
-  return { url: res.secure_url, publicId: res.public_id };
+// ── Cloudflare R2 upload ─────────────────────────────────────────────────────
+// Files go straight from the browser to R2 via presigned URLs (no size cap on
+// our side). Large files are sent in parallel chunks with multipart upload.
+const MULTIPART_THRESHOLD = 100 * 1024 * 1024; // 100 MB
+const PART_SIZE = 50 * 1024 * 1024; // 50 MB per chunk (R2 allows up to 10,000 parts)
+const PART_CONCURRENCY = 4;
+
+const uploadApi = async body => {
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || "Upload failed");
+  return data;
+};
+
+const uploadFile = async (file, folder) => {
+  const meta = { folder, filename: file.name, contentType: file.type || "application/octet-stream" };
+
+  if (file.size <= MULTIPART_THRESHOLD) {
+    const { key, url, uploadUrl } = await uploadApi({ action: "single", ...meta });
+    const put = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": meta.contentType },
+      body: file,
+    });
+    if (!put.ok) throw new Error(`Upload to storage failed (${put.status})`);
+    return { url, publicId: key };
+  }
+
+  const { key, url, uploadId } = await uploadApi({ action: "create", ...meta });
+  try {
+    const total = Math.ceil(file.size / PART_SIZE);
+    const parts = [];
+    let next = 1;
+    const worker = async () => {
+      while (next <= total) {
+        const partNumber = next++;
+        const chunk = file.slice((partNumber - 1) * PART_SIZE, partNumber * PART_SIZE);
+        const { uploadUrl } = await uploadApi({ action: "part", key, uploadId, partNumber });
+        const put = await fetch(uploadUrl, { method: "PUT", body: chunk });
+        if (!put.ok) throw new Error(`Chunk ${partNumber} failed (${put.status})`);
+        const etag = put.headers.get("ETag");
+        if (!etag) throw new Error("R2 CORS must expose the ETag header");
+        parts.push({ partNumber, etag });
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(PART_CONCURRENCY, total) }, worker));
+    await uploadApi({ action: "complete", key, uploadId, parts });
+    return { url, publicId: key };
+  } catch (err) {
+    uploadApi({ action: "abort", key, uploadId }).catch(() => {});
+    throw err;
+  }
 };
 
 const slugify = str =>
@@ -260,7 +301,7 @@ function DetailedServicesTab({ services, onRefresh, setMessage }) {
         contentUrl = form.contentImage,
         contentPublicId = form.contentImagePublicId;
       if (heroFile) {
-        const r = await uploadToCloudinary(
+        const r = await uploadFile(
           heroFile,
           "automotive-carcare/detailed-services/hero"
         );
@@ -268,7 +309,7 @@ function DetailedServicesTab({ services, onRefresh, setMessage }) {
         heroPublicId = r.publicId;
       }
       if (contentFile) {
-        const r = await uploadToCloudinary(
+        const r = await uploadFile(
           contentFile,
           "automotive-carcare/detailed-services/content"
         );
@@ -602,7 +643,7 @@ function SpecialServicesTab({ services, onRefresh, setMessage }) {
         contentUrl = form.contentImage,
         contentPublicId = form.contentImagePublicId;
       if (heroFile) {
-        const r = await uploadToCloudinary(
+        const r = await uploadFile(
           heroFile,
           "automotive-carcare/special-services/hero"
         );
@@ -610,7 +651,7 @@ function SpecialServicesTab({ services, onRefresh, setMessage }) {
         heroPublicId = r.publicId;
       }
       if (contentFile) {
-        const r = await uploadToCloudinary(
+        const r = await uploadFile(
           contentFile,
           "automotive-carcare/special-services/content"
         );
@@ -1061,7 +1102,7 @@ function CarBrandsTab({ brands, onRefresh, setMessage }) {
       let logoUrl = form.logo,
         publicId = form.cloudinaryPublicId;
       if (file) {
-        const r = await uploadToCloudinary(
+        const r = await uploadFile(
           file,
           "automotive-carcare/car-brands"
         );
@@ -1267,7 +1308,7 @@ function CarModelsTab({ models, onRefresh, setMessage }) {
       let imageUrl = form.image,
         publicId = form.cloudinaryPublicId;
       if (file) {
-        const r = await uploadToCloudinary(
+        const r = await uploadFile(
           file,
           "automotive-carcare/car-models"
         );
@@ -1481,7 +1522,7 @@ function HeroImagesTab({ images, onRefresh, setMessage }) {
     if (!file) return setMessage("Please select a file");
     setUploading(true);
     try {
-      await uploadToCloudinary(file, "automotive-carcare/hero-images");
+      await uploadFile(file, "automotive-carcare/hero-images");
       setMessage("✅ Image uploaded!");
       setPreview(null);
       e.target.reset();
@@ -1496,10 +1537,10 @@ function HeroImagesTab({ images, onRefresh, setMessage }) {
 
   const handleDelete = async publicId => {
     if (!confirm("Delete this image?")) return;
-    const data = await fetch("/api/cloudinary-delete", {
+    const data = await fetch("/api/delete-image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ publicId }),
+      body: JSON.stringify({ key: publicId }),
     }).then(r => r.json());
     if (data.success) {
       setMessage("✅ Deleted!");
@@ -1610,7 +1651,7 @@ export default function AdminDashboard() {
     try {
       const endpoints = [
         ["/api/bookings", "bookings"],
-        ["/api/cloudinary-images", "images"],
+        ["/api/hero-images", "images"],
         ["/api/detailed-services", "services", "detailedServices"],
         ["/api/vehicle-brands", "brands", "vehicleBrands"],
         ["/api/car-brands", "brands", "carBrands"],

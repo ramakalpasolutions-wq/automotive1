@@ -27,7 +27,7 @@ export default function HeroSlider() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const response = await fetch("/api/cloudinary-images", {
+      const response = await fetch("/api/hero-images", {
         signal: controller.signal,
       });
       
