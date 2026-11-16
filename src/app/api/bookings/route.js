@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { currentUser } from "@/lib/userAuth";
 
 const DBNAME = "automotivecarcare";
 const COLLECTIONNAME = "bookings";
@@ -25,6 +26,7 @@ export async function POST(request) {
     const client = await clientPromise;
     const db = client.db(DBNAME);
     const body = await request.json();
+    const user = await currentUser(request).catch(() => null);
 
     const requiredFields = ['name', 'email', 'phone', 'service', 'vehicleBrand', 'vehicleModel', 'bookingDate', 'bookingTime'];
     const missingFields = requiredFields.filter(field => !body[field]);
@@ -48,6 +50,7 @@ export async function POST(request) {
       bookingDate: body.bookingDate,
       bookingTime: body.bookingTime,
       notes: body.notes || "",
+      ...(user ? { userId: String(user._id) } : {}), // booked from the app while signed in
       status: "pending",
       createdAt: new Date(),
       updatedAt: new Date(),
