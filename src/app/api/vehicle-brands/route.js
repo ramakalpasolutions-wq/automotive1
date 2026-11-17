@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/staffAuth";
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
@@ -29,6 +30,8 @@ export async function GET() {
 
 // POST - Add new vehicle brand with models
 export async function POST(request) {
+  const denied = requireStaff(request); // admin only
+  if (denied) return denied;
   try {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
@@ -83,6 +86,8 @@ export async function POST(request) {
 
 // PUT - Update vehicle brand
 export async function PUT(request) {
+  const denied = requireStaff(request); // admin only
+  if (denied) return denied;
   try {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
@@ -136,6 +141,8 @@ export async function PUT(request) {
 
 // DELETE - Delete vehicle brand
 export async function DELETE(request) {
+  const denied = requireStaff(request); // admin only
+  if (denied) return denied;
   try {
     const client = await clientPromise;
     const db = client.db(DB_NAME);

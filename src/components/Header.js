@@ -15,6 +15,21 @@ export default function Header() {
     setIsServicesDropdownOpen(false);
   };
 
+  // Customer sign-in state (httpOnly cookie, checked by the server).
+  const [account, setAccount] = useState(null);
+  useEffect(() => {
+    const load = () =>
+      fetch("/api/app/me")
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => setAccount(d?.user || null))
+        .catch(() => setAccount(null));
+    load();
+    window.addEventListener("accountChanged", load);
+    return () => window.removeEventListener("accountChanged", load);
+  }, []);
+  const accountHref = account ? "/account" : "/account/login";
+  const accountLabel = account ? "My Account" : "Login";
+
   const toggleServicesDropdown = () =>
     setIsServicesDropdownOpen(!isServicesDropdownOpen);
 
@@ -109,6 +124,14 @@ export default function Header() {
                 className="text-xl tracking-[0.15em] uppercase text-white/90 hover:text-white transition-colors duration-300 font-light relative group"
               >
                 Contact
+                <span className="absolute bottom-0 left-0 w-0 h-px bg-amber-400 group-hover:w-full transition-all duration-300"></span>
+              </Link>
+
+              <Link
+                href={accountHref}
+                className="text-xl tracking-[0.15em] uppercase text-white/90 hover:text-white transition-colors duration-300 font-light relative group whitespace-nowrap"
+              >
+                {accountLabel}
                 <span className="absolute bottom-0 left-0 w-0 h-px bg-amber-400 group-hover:w-full transition-all duration-300"></span>
               </Link>
 
@@ -217,6 +240,13 @@ export default function Header() {
 
                 <Link href="/contact" onClick={closeMenu} className="group flex items-center justify-between py-5 text-white/90 hover:text-amber-400 transition-all duration-300 border-b border-white/5 hover:border-amber-400/30">
                   <span className="text-2xl font-light tracking-wide" style={{ fontFamily: "Georgia, serif" }}>Contact</span>
+                  <svg className="w-6 h-6 opacity-40 group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </Link>
+
+                <Link href={accountHref} onClick={closeMenu} className="group flex items-center justify-between py-5 text-white/90 hover:text-amber-400 transition-all duration-300 border-b border-white/5 hover:border-amber-400/30">
+                  <span className="text-2xl font-light tracking-wide" style={{ fontFamily: "Georgia, serif" }}>{accountLabel}</span>
                   <svg className="w-6 h-6 opacity-40 group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>

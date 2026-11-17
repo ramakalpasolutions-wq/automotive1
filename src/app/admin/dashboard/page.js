@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import "./styles.css";
+import { InvoicesTab, JobCardsTab, jobCardFromBooking } from "./WorkshopTabs";
 
 // ── Shared Helpers ──────────────────────────────────────────────────────────
 const SVG = ({ path, className = "icon-md" }) => (
@@ -107,7 +108,7 @@ const FormActions = ({ uploading, editing, onCancel, saveLabel }) => (
 );
 
 // ── Bookings Tab ────────────────────────────────────────────────────────────
-function BookingsTab({ bookings, onAccept, onDelete }) {
+function BookingsTab({ bookings, onAccept, onDelete, onJobCard }) {
   const grouped = bookings.reduce((acc, b) => {
     acc[b.bookingDate] = acc[b.bookingDate] || [];
     acc[b.bookingDate].push(b);
@@ -199,6 +200,12 @@ function BookingsTab({ bookings, onAccept, onDelete }) {
                             Vehicle: {b.vehicleBrand} {b.vehicleModel}
                           </p>
                           <p className="text-sm text-gray">Time: {b.bookingTime}</p>
+                          {b.pickup?.required && (
+                            <p className="text-sm mt-2" style={{ color: "rgb(252,211,77)" }}>
+                              🚗 Home pickup: {b.pickup.address}
+                              {b.pickup.landmark ? ` (near ${b.pickup.landmark})` : ""}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <p className="booking-label">Status</p>
@@ -222,6 +229,14 @@ function BookingsTab({ bookings, onAccept, onDelete }) {
                                 Accept
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => onJobCard(b)}
+                              className="btn-edit"
+                              style={{ width: "100%" }}
+                            >
+                              📋 Job card
+                            </button>
                             <button
                               type="button"
                               onClick={() => onDelete(b)}
@@ -1633,6 +1648,10 @@ function HeroImagesTab({ images, onRefresh, setMessage }) {
 // ── Root Dashboard ──────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("bookings");
+  const [jobDraft, setJobDraft] = useState(null);
+  const [invoiceDraft, setInvoiceDraft] = useState(null);
+  const clearJobDraft = useCallback(() => setJobDraft(null), []);
+  const clearInvoiceDraft = useCallback(() => setInvoiceDraft(null), []);
   const [data, setData] = useState({
     bookings: [],
     detailedServices: [],
@@ -1679,12 +1698,16 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  // The admin session lives in an httpOnly cookie, checked by the server.
   useEffect(() => {
-    if (!localStorage.getItem("adminAuth")) {
-      router.push("/admin-login");
-      return;
-    }
-    fetchData();
+    fetch("/api/admin/me")
+      .then(async r => {
+        const me = r.ok ? await r.json() : null;
+        if (!me) router.push("/admin-login");
+        else if (me.level === "manager") router.push("/admin/manager");
+        else fetchData();
+      })
+      .catch(() => router.push("/admin-login"));
   }, [router, fetchData]);
 
   const tabs = [
@@ -1693,6 +1716,18 @@ export default function AdminDashboard() {
       label: "Bookings",
       icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
       count: data.bookings.length,
+    },
+    {
+      id: "job-cards",
+      label: "Job Cards",
+      icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
+      count: "",
+    },
+    {
+      id: "invoices",
+      label: "Invoices",
+      icon: "M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z",
+      count: "",
     },
     {
       id: "detailed-services",
@@ -1767,7 +1802,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch("/api/admin/logout", { method: "POST" }).catch(() => {});
     localStorage.removeItem("adminAuth");
     router.push("/admin-login");
   };
@@ -1788,6 +1824,9 @@ export default function AdminDashboard() {
       <div className="admin-header">
         <div className="admin-header-content">
           <h1 className="admin-title">Admin Dashboard</h1>
+          <a href="/admin/manager" className="logout-btn" style={{ textDecoration: "none", marginLeft: "auto", marginRight: "0.5rem" }}>
+            Appointments &amp; job flow
+          </a>
           <button type="button" onClick={handleLogout} className="logout-btn">
             <SVG path="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             <span>Logout</span>
@@ -1822,7 +1861,25 @@ export default function AdminDashboard() {
               bookings={data.bookings}
               onAccept={handleAcceptBooking}
               onDelete={handleDeleteBooking}
+              onJobCard={b => {
+                setJobDraft(jobCardFromBooking(b));
+                setActiveTab("job-cards");
+              }}
             />
+          )}
+          {activeTab === "job-cards" && (
+            <JobCardsTab
+              draft={jobDraft}
+              clearDraft={clearJobDraft}
+              setMessage={setMessage}
+              onCreateInvoice={inv => {
+                setInvoiceDraft(inv);
+                setActiveTab("invoices");
+              }}
+            />
+          )}
+          {activeTab === "invoices" && (
+            <InvoicesTab draft={invoiceDraft} clearDraft={clearInvoiceDraft} setMessage={setMessage} />
           )}
           {activeTab === "detailed-services" && (
             <DetailedServicesTab
@@ -1882,7 +1939,7 @@ export default function AdminDashboard() {
               >
                 <SVG path={tab.icon} className="icon-sm" />
                 <span className="sidebar-tab-label">{tab.label}</span>
-                <span className="sidebar-count">{tab.count}</span>
+                {tab.count !== "" && <span className="sidebar-count">{tab.count}</span>}
               </button>
             ))}
           </nav>

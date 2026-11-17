@@ -25,10 +25,19 @@ export default function BookingPage() {
     bookingDate: "",
     bookingTime: "",
     notes: "",
+    pickup: false,            // home pickup of the car
+    pickupAddress: "",
+    pickupLandmark: "",
   });
+  const [slots, setSlots] = useState(null);       // availability for the chosen date
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  // Booking needs a customer account: undefined = checking, null = signed out.
+  const [account, setAccount] = useState(undefined);
+  const loginHref = () =>
+    `/account/login?next=${encodeURIComponent("/booking" + (typeof window !== "undefined" ? window.location.search : ""))}`;
   const [phoneError, setPhoneError] = useState("");
 
   const countryCodes = [
@@ -42,6 +51,26 @@ export default function BookingPage() {
     { code: "+86", country: "China", flag: "🇨🇳" },
   ];
 
+  // Signed in? Fill in the customer's details (only empty fields).
+  useEffect(() => {
+    fetch("/api/app/me")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        const u = d?.user || null;
+        setAccount(u);
+        if (!u) return;
+        const m = String(u.phone || "").match(/^(\+\d{1,3})\s*(.*)$/);
+        setFormData(prev => ({
+          ...prev,
+          name: prev.name || u.name || "",
+          email: prev.email || u.email || "",
+          countryCode: prev.phone ? prev.countryCode : m ? m[1] : prev.countryCode,
+          phone: prev.phone || String(m ? m[2] : u.phone || "").replace(/\D/g, ""),
+        }));
+      })
+      .catch(() => setAccount(null));
+  }, []);
+
   useEffect(() => {
     fetchData();
     const urlParams = new URLSearchParams(window.location.search);
@@ -54,6 +83,25 @@ export default function BookingPage() {
       }));
     }
   }, []);
+
+  // ── Places left per time slot (2 cars per hour) ───────────────────────────
+  const loadSlots = async date => {
+    if (!date) return setSlots(null);
+    setSlotsLoading(true);
+    try {
+      const d = await fetch(`/api/bookings/availability?date=${date}`).then(r => r.json());
+      setSlots(d.slots || []);
+      // Drop a chosen time that is no longer available.
+      setFormData(prev => (prev.bookingDate === date && prev.bookingTime && !(d.slots || []).find(x => x.time === prev.bookingTime)?.available ? { ...prev, bookingTime: "" } : prev));
+    } catch {
+      setSlots([]);
+    } finally {
+      setSlotsLoading(false);
+    }
+  };
+  useEffect(() => {
+    loadSlots(formData.bookingDate);
+  }, [formData.bookingDate]);
 
   // ── Fetch both General + Special services ─────────────────────────────────
   const fetchData = async () => {
@@ -77,6 +125,19 @@ export default function BookingPage() {
         (specialData.services || []).map(s => ({ ...s, type: "special" }))
       );
       setVehicleBrands(brandsData.brands || []);
+      // Coming from a car model page (?brand=hyundai&model=Creta): pre-select the car.
+      const params = new URLSearchParams(window.location.search);
+      const wantBrand = params.get("brand");
+      if (wantBrand) {
+        const key = s => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const vb = (brandsData.brands || []).find(b => b.slug === wantBrand || key(b.name).startsWith(key(wantBrand)));
+        if (vb) {
+          const wantModel = params.get("model") || "";
+          const trims = (vb.models || []).flatMap(m => String(m).split(/\n+/)).map(m => m.trim());
+          const exact = trims.find(t => key(t) === key(wantModel));
+          setFormData(prev => ({ ...prev, vehicleBrand: vb.slug, vehicleModel: exact || "" }));
+        }
+      }
       setBrandLogos(logosRes?.ok ? (await logosRes.json()).brands || [] : []);
       setModelImages(modelsRes?.ok ? (await modelsRes.json()).models || [] : []);
     } catch (error) {
@@ -167,6 +228,14 @@ export default function BookingPage() {
       document.getElementById("vehicle-details")?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
+    if (!formData.bookingDate || !formData.bookingTime) {
+      setMessage("Please choose a date and an available time slot");
+      return;
+    }
+    if (formData.pickup && formData.pickupAddress.trim().length < 8) {
+      setMessage("Please enter the full pickup address");
+      return;
+    }
 
     setLoading(true);
     setMessage("");
@@ -183,6 +252,9 @@ export default function BookingPage() {
         bookingDate: formData.bookingDate,
         bookingTime: formData.bookingTime,
         notes: formData.notes,
+        pickup: formData.pickup
+          ? { required: true, address: formData.pickupAddress.trim(), landmark: formData.pickupLandmark.trim() }
+          : { required: false },
       };
 
       if (selectionMode === "single") {
@@ -218,13 +290,19 @@ export default function BookingPage() {
 
       const data = await response.json();
 
+      if (response.status === 401 && data.signInRequired) {
+        window.location.href = loginHref();
+        return;
+      }
+      if (data.slotFull) loadSlots(formData.bookingDate);
+
       if (response.ok && data.success) {
-        setMessage(data.message || "Booking submitted successfully!");
-        setFormData({
-          name: "",
-          email: "",
-          countryCode: "+91",
-          phone: "",
+        setMessage((data.message || "Booking submitted successfully!") + " You can follow it in My Account.");
+        setFormData(prev => ({
+          name: prev.name,
+          email: prev.email,
+          countryCode: prev.countryCode,
+          phone: prev.phone,
           primaryService: "",
           additionalServices: [],
           vehicleBrand: "",
@@ -232,7 +310,11 @@ export default function BookingPage() {
           bookingDate: "",
           bookingTime: "",
           notes: "",
-        });
+          pickup: false,
+          pickupAddress: "",
+          pickupLandmark: "",
+        }));
+        setSlots(null);
         setPhoneError("");
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
@@ -295,6 +377,28 @@ export default function BookingPage() {
             </div>
           )}
 
+          {account === null && (
+            <div className="form-card" style={{ textAlign: "center" }}>
+              <h2 className="form-section-title" style={{ marginBottom: "0.75rem" }}>Sign in to book</h2>
+              <p style={{ color: "#9ca3af", marginBottom: "1.5rem" }}>
+                Create a free account or sign in to book a service. You can then follow your bookings, job cards and invoices online.
+              </p>
+              <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+                <a href={loginHref()} className="submit-button" style={{ width: "auto", padding: "1rem 2rem", textDecoration: "none" }}>
+                  Sign in
+                </a>
+                <a href={loginHref() + "&mode=signup"} className="submit-button" style={{ width: "auto", padding: "1rem 2rem", textDecoration: "none", background: "transparent", border: "1px solid #6b7280" }}>
+                  Create account
+                </a>
+              </div>
+              <p style={{ color: "#9ca3af", marginTop: "1.5rem", fontSize: "0.9rem" }}>
+                Prefer to talk? Call <a href="tel:+919392792067" style={{ textDecoration: "underline" }}>+91 93927 92067</a>
+              </p>
+            </div>
+          )}
+          {account === undefined && <div className="form-card" style={{ textAlign: "center", color: "#9ca3af" }}>Loading…</div>}
+
+          {account && (
           <div className="form-card">
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
 
@@ -645,18 +749,70 @@ export default function BookingPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "2rem" }}>
                   <div>
                     <label className="form-label">Preferred Date *</label>
-                    <input type="date" name="bookingDate" value={formData.bookingDate} onChange={handleChange} required min={new Date().toISOString().split("T")[0]} className="form-input" />
-                  </div>
-                  <div>
-                    <label className="form-label">Preferred Time *</label>
-                    <select name="bookingTime" value={formData.bookingTime} onChange={handleChange} required className="form-select">
-                      <option value="">Select time slot</option>
-                      {["07:00 AM","08:00 AM","09:00 AM","10:00 AM","11:00 AM","12:00 PM","01:00 PM","02:00 PM","03:00 PM","04:00 PM","05:00 PM","06:00 PM","07:00 PM"].map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
+                    <input type="date" name="bookingDate" value={formData.bookingDate} onChange={e => setFormData(prev => ({ ...prev, bookingDate: e.target.value, bookingTime: "" }))} required min={new Date(Date.now() + 5.5 * 3600e3).toISOString().split("T")[0]} className="form-input" />
                   </div>
                 </div>
+                <label className="form-label" style={{ marginTop: "1.75rem" }}>
+                  Preferred Time * <span className="slot-note">· 2 cars per hour</span>
+                </label>
+                {!formData.bookingDate ? (
+                  <p className="helper-text">Pick a date to see available times.</p>
+                ) : slotsLoading && !slots ? (
+                  <p className="helper-text">Checking availability…</p>
+                ) : (
+                  <div className={`slot-grid${slotsLoading ? " slot-grid-loading" : ""}`} role="radiogroup" aria-label="Time slot">
+                    {(slots || []).map(sl => {
+                      const active = formData.bookingTime === sl.time;
+                      return (
+                        <button
+                          type="button"
+                          key={sl.time}
+                          role="radio"
+                          aria-checked={active}
+                          disabled={!sl.available}
+                          onClick={() => setFormData(prev => ({ ...prev, bookingTime: sl.time }))}
+                          className={`slot${active ? " slot-active" : ""}`}
+                        >
+                          <span className="slot-time">{sl.time}</span>
+                          <span className="slot-left">{sl.passed ? "Closed" : sl.left === 0 ? "Full" : `${sl.left} left`}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {slots && slots.length > 0 && !slots.some(s => s.available) && (
+                  <p className="helper-text">No times left on this date. Please pick another day.</p>
+                )}
+              </div>
+
+              {/* Home pickup */}
+              <div>
+                <h3 className="form-section-title">Home Pickup</h3>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={formData.pickup}
+                  onClick={() => setFormData(prev => ({ ...prev, pickup: !prev.pickup }))}
+                  className={`pickup-toggle${formData.pickup ? " pickup-on" : ""}`}
+                >
+                  <span className="pickup-switch"><span /></span>
+                  <span className="pickup-text">
+                    <strong>Pick up my car from home</strong>
+                    <span>Our driver collects the car and brings it back after the service.</span>
+                  </span>
+                </button>
+                {formData.pickup && (
+                  <div className="pickup-fields">
+                    <div>
+                      <label className="form-label">Pickup address *</label>
+                      <textarea name="pickupAddress" value={formData.pickupAddress} onChange={handleChange} rows={3} required minLength={8} className="form-textarea" placeholder="House no., street, area, Guntur" />
+                    </div>
+                    <div>
+                      <label className="form-label">Landmark</label>
+                      <input name="pickupLandmark" value={formData.pickupLandmark} onChange={handleChange} className="form-input" placeholder="Near…" />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Notes */}
@@ -701,6 +857,7 @@ export default function BookingPage() {
               </div>
             </form>
           </div>
+          )}
 
           {/* Info Cards */}
           <div className="info-cards">

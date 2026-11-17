@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/staffAuth";
 import { NextResponse } from "next/server";
 import { deleteObject } from "@/lib/r2";
 import clientPromise from "@/lib/mongodb";
@@ -38,6 +39,8 @@ export async function GET(req) {
 
 // POST - Create new car model
 export async function POST(req) {
+  const denied = requireStaff(req); // admin only
+  if (denied) return denied;
   try {
     console.log("✅ POST /api/car-models called");
     
@@ -110,6 +113,8 @@ export async function POST(req) {
 
 // PUT - Update car model
 export async function PUT(req) {
+  const denied = requireStaff(req); // admin only
+  if (denied) return denied;
   try {
     console.log("✅ PUT /api/car-models called");
     
@@ -180,6 +185,8 @@ export async function PUT(req) {
 
 // DELETE - Delete car model
 export async function DELETE(req) {
+  const denied = requireStaff(req); // admin only
+  if (denied) return denied;
   try {
     console.log("✅ DELETE /api/car-models called");
     

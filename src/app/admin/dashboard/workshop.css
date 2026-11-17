@@ -1,0 +1,63 @@
+/* Job cards & invoices (admin). Builds on styles.css. */
+.ws-form { display: flex; flex-direction: column; gap: 1rem; }
+.ws-h { color: rgb(147, 197, 253); font-weight: 700; margin: 0.5rem 0 0; font-size: 0.95rem; letter-spacing: 0.02em; }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
+.ws-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.ws-field .form-label { margin: 0; }
+.ws-wide { grid-column: 1 / -1; }
+.ws-rows { display: flex; flex-direction: column; gap: 0.5rem; }
+.ws-row { display: flex; gap: 0.5rem; align-items: center; }
+.ws-row .form-input:first-child { flex: 1; min-width: 0; }
+.ws-qty { width: 5.5rem !important; flex: none; }
+.ws-rate { width: 8rem !important; flex: none; }
+.ws-type { width: 7.5rem !important; flex: none; }
+.ws-amount { width: 7.5rem; text-align: right; color: white; font-variant-numeric: tabular-nums; flex: none; }
+.ws-small { padding: 0.4rem 0.8rem !important; width: auto !important; align-self: flex-start; font-size: 0.85rem; }
+.ws-check { display: flex; gap: 0.35rem; align-items: center; color: rgb(209, 213, 219); white-space: nowrap; font-size: 0.9rem; }
+.ws-account { display: flex; flex-direction: column; gap: 0.4rem; }
+.ws-linked { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.4); color: rgb(187, 247, 208); padding: 0.6rem 0.9rem; border-radius: 0.75rem; }
+.ws-results { display: flex; flex-direction: column; background: rgb(24, 24, 27); border: 1px solid rgb(63, 63, 70); border-radius: 0.75rem; overflow: hidden; }
+.ws-result { text-align: left; padding: 0.6rem 0.9rem; color: rgb(229, 231, 235); background: none; border: none; border-bottom: 1px solid rgb(39, 39, 42); cursor: pointer; }
+.ws-result:hover { background: rgb(30, 41, 59); }
+.ws-hint { color: rgb(156, 163, 175); font-size: 0.8rem; margin: 0; }
+.ws-totals { display: grid; grid-template-columns: 1fr auto; gap: 0.35rem 1.5rem; max-width: 22rem; margin-left: auto; color: rgb(209, 213, 219); font-variant-numeric: tabular-nums; }
+.ws-totals strong { color: white; font-size: 1.1rem; border-top: 1px solid rgb(63, 63, 70); padding-top: 0.35rem; }
+.ws-toolbar { display: flex; gap: 0.75rem; margin: 1rem 0; }
+.ws-toolbar .form-select { width: 12rem; flex: none; }
+.ws-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.ws-item { display: flex; flex-direction: column; gap: 0.25rem; }
+.ws-item-top { display: flex; justify-content: space-between; align-items: center; color: white; }
+.ws-total { color: white; font-size: 1.25rem; font-weight: 800; margin: 0; }
+.ws-badge { font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; }
+.ws-open, .ws-unpaid { background: rgba(245, 158, 11, 0.18); color: rgb(252, 211, 77); }
+.ws-in_progress { background: rgba(59, 130, 246, 0.18); color: rgb(147, 197, 253); }
+.ws-completed, .ws-paid { background: rgba(34, 197, 94, 0.18); color: rgb(134, 239, 172); }
+.ws-delivered { background: rgba(148, 163, 184, 0.2); color: rgb(226, 232, 240); }
+.ws-cancelled { background: rgba(239, 68, 68, 0.18); color: rgb(252, 165, 165); }
+.ws-a { text-decoration: none; text-align: center; }
+.ws-auto { width: auto !important; }
+.card-actions { flex-wrap: wrap; }
+.ws-seg { display: inline-flex; background: rgb(24, 24, 27); border: 2px solid rgb(63, 63, 70); border-radius: 0.75rem; padding: 3px; flex: none; }
+.ws-seg button { background: none; border: none; color: rgb(161, 161, 170); padding: 0.45rem 0.9rem; border-radius: 0.55rem; font-weight: 700; cursor: pointer; transition: background 0.2s, color 0.2s; }
+.ws-seg button.on { background: rgb(59, 130, 246); color: white; }
+.ws-board { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 1rem; overflow-x: auto; padding-bottom: 0.5rem; }
+.ws-col { background: rgba(24, 24, 27, 0.6); border: 1px solid rgb(39, 39, 42); border-radius: 1rem; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.75rem; min-height: 200px; }
+.ws-col-title { display: flex; align-items: center; gap: 0.5rem; color: white; font-weight: 700; font-size: 0.95rem; margin: 0.25rem 0.25rem 0; }
+.ws-col-count { margin-left: auto; color: rgb(161, 161, 170); font-weight: 600; }
+.ws-dot { width: 10px; height: 10px; border-radius: 50%; padding: 0; }
+.ws-empty { color: rgb(113, 113, 122); font-size: 0.85rem; text-align: center; margin: 1rem 0; }
+.ws-tile { animation: ws-in 0.3s ease both; }
+.ws-tile:hover { transform: translateY(-2px); border-color: rgba(59, 130, 246, 0.5); }
+.ws-compact { padding: 1rem; }
+.ws-pickup { color: rgb(252, 211, 77); font-size: 0.85rem; margin: 0; }
+.ws-progress { height: 6px; background: rgb(39, 39, 42); border-radius: 999px; overflow: hidden; margin: 0.25rem 0; }
+.ws-progress span { display: block; height: 100%; background: linear-gradient(90deg, rgb(34, 197, 94), rgb(132, 204, 22)); transition: width 0.4s ease; }
+@keyframes ws-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 900px) {
+  .ws-board { grid-template-columns: repeat(4, 80vw); scroll-snap-type: x mandatory; }
+  .ws-col { scroll-snap-align: start; }
+  .ws-toolbar { flex-wrap: wrap; }
+  .ws-toolbar .form-input { flex-basis: 100%; }
+  .ws-row { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) { .ws-tile { animation: none; } }

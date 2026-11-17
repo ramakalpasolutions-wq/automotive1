@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/staffAuth";
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
@@ -14,6 +15,8 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  const denied = requireStaff(request); // admin only
+  if (denied) return denied;
   try {
     const serviceData = await request.json();
     if (!serviceData.slug) {
@@ -38,6 +41,8 @@ export async function POST(request) {
 }
 
 export async function PUT(request) {
+  const denied = requireStaff(request); // admin only
+  if (denied) return denied;
   try {
     const { _id, ...serviceData } = await request.json(); // ✅ _id
     const client = await clientPromise;
@@ -53,6 +58,8 @@ export async function PUT(request) {
 }
 
 export async function DELETE(request) {
+  const denied = requireStaff(request); // admin only
+  if (denied) return denied;
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

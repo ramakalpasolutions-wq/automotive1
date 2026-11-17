@@ -303,6 +303,7 @@ export default function ContactPage() {
                       <div>
                         <h3 className="text-sm font-light text-gray-400 mb-2 tracking-wide uppercase">Address</h3>
                         <p className="text-white font-light text-lg">Guntur, Andhra Pradesh<br/>India</p>
+                        <a href="https://www.google.com/maps/search/?api=1&query=Automotive+Car+Care+Guntur" target="_blank" rel="noopener noreferrer" className="inline-block mt-2 text-amber-400 hover:text-amber-300 text-sm underline">Get directions</a>
                       </div>
                     </div>
 

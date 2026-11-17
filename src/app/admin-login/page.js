@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 export default function AdminLogin() {
   const [credentials, setCredentials] = useState({
-    username: "Automotive Car-Care",
+    username: "",
     password: "",
   });
   const [error, setError] = useState("");
@@ -17,17 +17,23 @@ export default function AdminLogin() {
     setLoading(true);
     setError("");
 
-    // Simple hardcoded authentication
-    if (
-      credentials.username === "Automotive Car-Care" &&
-      credentials.password === "Automotive@2025"
-    ) {
-      localStorage.setItem("adminAuth", "true");
-      router.push("/admin/dashboard");
-    } else {
-      setError("Invalid username or password");
-      setLoading(false);
+    // Checked on the server; the session is kept in an httpOnly cookie.
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        router.push(data.level === "manager" ? "/admin/manager" : "/admin/dashboard");
+        return;
+      }
+      setError(data.error || "Invalid username or password");
+    } catch {
+      setError("Could not reach the server. Please try again.");
     }
+    setLoading(false);
   };
 
   return (
@@ -36,8 +42,8 @@ export default function AdminLogin() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <div className="text-5xl mb-4">🚗</div>
-            <h2 className="text-3xl font-bold text-gray-900">Admin Login</h2>
-            <p className="text-gray-600 mt-2">Automotive Car Care Dashboard</p>
+            <h2 className="text-3xl font-bold text-gray-900">Staff Login</h2>
+            <p className="text-gray-600 mt-2">Admin and job card manager</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6" suppressHydrationWarning>

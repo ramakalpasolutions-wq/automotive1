@@ -1,0 +1,49 @@
+/* Job card manager portal (builds on the admin dashboard styles). */
+.mg-main { max-width: 1280px; width: 100%; margin: 0 auto; padding: 1.5rem 1rem 3rem; box-sizing: border-box; }
+.mg-head-actions { display: flex; gap: 0.5rem; }
+.mg-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.25rem; }
+.mg-stat {
+  display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 0.75rem; align-items: center;
+  background: linear-gradient(135deg, rgb(39, 39, 42), rgb(30, 41, 59)); border-radius: 1rem; padding: 1rem;
+  animation: mg-in 0.4s ease both;
+}
+.mg-stat-icon { grid-row: span 2; font-size: 1.6rem; }
+.mg-stat-num { color: white; font-size: 1.6rem; font-weight: 800; line-height: 1; }
+.mg-stat-label { color: rgb(161, 161, 170); font-size: 0.8rem; }
+.mg-tabs, .mg-filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.mg-tabs button, .mg-filters button {
+  background: rgb(39, 39, 42); color: rgb(212, 212, 216); border: 1px solid rgb(63, 63, 70); border-radius: 999px;
+  padding: 0.55rem 1.1rem; font-weight: 700; cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.15s;
+}
+.mg-tabs button:active, .mg-filters button:active { transform: scale(0.96); }
+.mg-tabs button.on { background: rgb(59, 130, 246); border-color: rgb(59, 130, 246); color: white; }
+.mg-filters button.on { background: white; color: rgb(17, 24, 39); border-color: white; }
+.mg-refresh { margin-left: auto; }
+.mg-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.mg-card {
+  display: flex; gap: 1rem; background: linear-gradient(135deg, rgb(39, 39, 42), rgb(30, 41, 59)); border-radius: 1rem;
+  padding: 1rem 1.25rem; border: 1px solid transparent; transition: border-color 0.2s, transform 0.2s; animation: mg-in 0.35s ease both;
+}
+.mg-card:hover { border-color: rgba(59, 130, 246, 0.45); transform: translateY(-1px); }
+.mg-time { flex: none; width: 92px; display: flex; flex-direction: column; color: white; }
+.mg-time strong { font-size: 1.05rem; }
+.mg-time span { color: rgb(161, 161, 170); font-size: 0.8rem; }
+.mg-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.mg-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.mg-name { color: white; font-size: 1.05rem; }
+.mg-car { color: rgb(226, 232, 240); margin: 0; font-weight: 600; }
+.mg-pickup-badge { background: rgba(245, 158, 11, 0.2); color: rgb(252, 211, 77); }
+.mg-address { color: rgb(252, 211, 77); font-size: 0.9rem; text-decoration: none; }
+.mg-address:hover { text-decoration: underline; }
+.mg-notes { color: rgb(161, 161, 170); font-style: italic; margin: 0; font-size: 0.9rem; }
+.mg-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.4rem; }
+.mg-actions > * { padding: 0.5rem 0.9rem !important; font-size: 0.85rem; width: auto !important; flex: none !important; }
+.mg-jc { box-shadow: none !important; }
+.mg-empty { color: rgb(161, 161, 170); text-align: center; padding: 3rem 0; }
+@keyframes mg-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (max-width: 720px) {
+  .mg-stats { grid-template-columns: repeat(2, 1fr); }
+  .mg-card { flex-direction: column; gap: 0.5rem; }
+  .mg-time { flex-direction: row; gap: 0.5rem; width: auto; align-items: baseline; }
+}
+@media (prefers-reduced-motion: reduce) { .mg-card, .mg-stat { animation: none; } }

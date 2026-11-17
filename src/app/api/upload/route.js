@@ -1,3 +1,4 @@
+import { requireStaff } from "@/lib/staffAuth";
 import { NextResponse } from "next/server";
 import {
   makeKey,
@@ -18,6 +19,8 @@ import {
 // POST { action: "complete", key, uploadId, parts: [{partNumber,etag}]} -> { key, url }
 // POST { action: "abort",    key, uploadId }                            -> { success }
 export async function POST(req) {
+  const denied = requireStaff(req); // admin only
+  if (denied) return denied;
   try {
     const body = await req.json();
     const { action } = body;

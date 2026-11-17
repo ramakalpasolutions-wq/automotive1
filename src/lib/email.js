@@ -1,6 +1,14 @@
 import nodemailer from "nodemailer";
 
 // Send booking notification (when customer submits form)
+// Home pickup line for emails (address is escaped for HTML).
+const esc = v => String(v || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const pickupText = b => (b.pickup?.required ? `\nHome pickup: YES — ${b.pickup.address}${b.pickup.landmark ? ` (near ${b.pickup.landmark})` : ""}` : "");
+const pickupRow = (b, pad = 8) =>
+  b.pickup?.required
+    ? `<tr><td style="padding: ${pad}px 0; color: #636e72; font-size: 14px; font-weight: 600;">Home pickup:</td><td style="padding: ${pad}px 0; color: #d63031; font-size: 15px; font-weight: 700;">YES — ${esc(b.pickup.address)}${b.pickup.landmark ? ` (near ${esc(b.pickup.landmark)})` : ""}</td></tr>`
+    : "";
+
 export async function sendBookingNotification(booking) {
   try {
     console.log("📧 Attempting to send booking notification emails...");
@@ -54,7 +62,7 @@ export async function sendBookingNotification(booking) {
       from: `"Automotive Car Care" <${process.env.EMAIL_USER}>`,
       to: booking.email,
       subject: "🚗 Booking Received - Automotive Car Care",
-      text: `Dear ${booking.name},\n\nThank you for your booking!\n\n${servicesText}\nVehicle: ${booking.vehicleBrand} ${booking.vehicleModel}\nDate: ${booking.bookingDate}\nTime: ${booking.bookingTime}\n\nWe will confirm shortly.`,
+      text: `Dear ${booking.name},\n\nThank you for your booking!\n\n${servicesText}\nVehicle: ${booking.vehicleBrand} ${booking.vehicleModel}\nDate: ${booking.bookingDate}\nTime: ${booking.bookingTime}${pickupText(booking)}\n\nWe will confirm shortly.`,
       html: `
         <!DOCTYPE html>
         <html lang="en">
@@ -120,6 +128,7 @@ export async function sendBookingNotification(booking) {
                                   <td style="padding: 10px 0; color: #636e72; font-size: 14px; font-weight: 600;">Vehicle:</td>
                                   <td style="padding: 10px 0; color: #2d3436; font-size: 15px; font-weight: 500;">${booking.vehicleBrand} ${booking.vehicleModel}</td>
                                 </tr>
+                                ${pickupRow(booking, 10)}
                                 <tr>
                                   <td style="padding: 10px 0; color: #636e72; font-size: 14px; font-weight: 600;">Date:</td>
                                   <td style="padding: 10px 0; color: #2d3436; font-size: 15px; font-weight: 500;">${booking.bookingDate}</td>
@@ -188,7 +197,7 @@ export async function sendBookingNotification(booking) {
       from: `"Automotive Car Care" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
       subject: "🔔 New Booking - Action Required",
-      text: `New booking from ${booking.name}\nEmail: ${booking.email}\nPhone: ${booking.phone}\n${servicesText}\nVehicle: ${booking.vehicleBrand} ${booking.vehicleModel}\nDate: ${booking.bookingDate}\nTime: ${booking.bookingTime}`,
+      text: `New booking from ${booking.name}\nEmail: ${booking.email}\nPhone: ${booking.phone}\n${servicesText}\nVehicle: ${booking.vehicleBrand} ${booking.vehicleModel}\nDate: ${booking.bookingDate}\nTime: ${booking.bookingTime}${pickupText(booking)}`,
       html: `
         <!DOCTYPE html>
         <html lang="en">
@@ -268,6 +277,7 @@ export async function sendBookingNotification(booking) {
                                   <td style="padding: 8px 0; color: #636e72; font-size: 14px; font-weight: 600;">Vehicle:</td>
                                   <td style="padding: 8px 0; color: #2d3436; font-size: 15px; font-weight: 500;">${booking.vehicleBrand} ${booking.vehicleModel}</td>
                                 </tr>
+                                ${pickupRow(booking, 8)}
                                 <tr>
                                   <td style="padding: 8px 0; color: #636e72; font-size: 14px; font-weight: 600;">Date:</td>
                                   <td style="padding: 8px 0; color: #2d3436; font-size: 15px; font-weight: 600;">${booking.bookingDate}</td>
@@ -396,7 +406,7 @@ export async function sendAcceptanceEmail(booking) {
       from: `"Automotive Car Care" <${process.env.EMAIL_USER}>`,
       to: booking.email,
       subject: "✅ Booking Confirmed - Automotive Car Care",
-      text: `Dear ${booking.name},\n\nYour booking has been CONFIRMED!\n\nService: ${booking.serviceName || booking.service}\nVehicle: ${booking.vehicleBrand} ${booking.vehicleModel}\nDate: ${booking.bookingDate}\nTime: ${booking.bookingTime}\n\nSee you soon!`,
+      text: `Dear ${booking.name},\n\nYour booking has been CONFIRMED!\n\nService: ${booking.serviceName || booking.service}\nVehicle: ${booking.vehicleBrand} ${booking.vehicleModel}\nDate: ${booking.bookingDate}\nTime: ${booking.bookingTime}${pickupText(booking)}\n\nSee you soon!`,
       html: `
         <!DOCTYPE html>
         <html lang="en">

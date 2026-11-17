@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
-import { verifyRequest } from "@/lib/staffAuth";
+import { requireStaff, verifyRequest } from "@/lib/staffAuth";
 
 // Bookings for the mobile app's staff section. Every call needs a staff token.
 const bookings = async () => (await clientPromise).db("automotivecarcare").collection("bookings");
@@ -49,7 +49,8 @@ export async function PATCH(request) {
 }
 
 export async function DELETE(request) {
-  if (!verifyRequest(request)) return unauthorized();
+  const denied = requireStaff(request); // admin only
+  if (denied) return denied;
   const id = new URL(request.url).searchParams.get("id");
   if (!validId(id)) return NextResponse.json({ success: false, error: "Invalid booking ID" }, { status: 400 });
   try {

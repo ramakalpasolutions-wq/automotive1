@@ -209,7 +209,7 @@ export default function ModelServicesPage({ model = null }) {
             {/* Book Now Button */}
             <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-gray-100 via-gray-100 to-transparent pt-4 pb-4 sm:pb-0 sm:relative sm:bg-none">
               <button 
-                onClick={() => router.push('/booking')} 
+                onClick={() => router.push(`/booking?brand=${encodeURIComponent(brandSlug)}&model=${encodeURIComponent(modelName)}`)} 
                 className="w-full bg-gradient-to-r from-gray-900 to-gray-800 hover:from-amber-400 hover:to-amber-500 text-white hover:text-gray-900 py-4 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg md:text-xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 group touch-manipulation"
               >
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

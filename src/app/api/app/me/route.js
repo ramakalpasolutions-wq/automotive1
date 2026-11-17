@@ -46,7 +46,9 @@ export async function DELETE(request) {
   if (!user) return signedOut();
   try {
     const db = (await clientPromise).db("automotivecarcare");
-    await db.collection("bookings").updateMany({ userId: String(user._id) }, { $unset: { userId: "" } });
+    for (const c of ["bookings", "jobcards", "invoices"]) {
+      await db.collection(c).updateMany({ userId: String(user._id) }, { $unset: { userId: "" } });
+    }
     await (await users()).deleteOne({ _id: user._id });
     return NextResponse.json({ success: true });
   } catch (error) {

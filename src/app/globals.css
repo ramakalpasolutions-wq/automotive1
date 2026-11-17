@@ -217,3 +217,11 @@ body {
   transform: translateX(50px);
   opacity: 0;
 }
+
+/* Gentle entrance animation for cards (account pages, booking). */
+@keyframes anim-fade-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.anim-fade-up { animation: anim-fade-up 0.45s cubic-bezier(.2,.7,.3,1) both; }
+.anim-delay-1 { animation-delay: 60ms; } .anim-delay-2 { animation-delay: 120ms; } .anim-delay-3 { animation-delay: 180ms; }
+.anim-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.anim-lift:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08); }
+@media (prefers-reduced-motion: reduce) { .anim-fade-up { animation: none; } .anim-lift, .anim-lift:hover { transition: none; transform: none; } }

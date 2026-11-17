@@ -1,8 +1,11 @@
+import { requireStaff } from "@/lib/staffAuth";
 import { NextResponse } from "next/server";
 import { deleteObject } from "@/lib/r2";
 
 // POST { key } -> deletes that object from Cloudflare R2
 export async function POST(request) {
+  const denied = requireStaff(request); // admin only
+  if (denied) return denied;
   try {
     const { key, publicId } = await request.json();
     const target = key || publicId;

@@ -1,12 +1,16 @@
+import { requireStaff } from "@/lib/staffAuth";
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { currentUser } from "@/lib/userAuth";
+import { bookedCounts, DATE_RE, SLOT_CAPACITY, SLOT_TIMES, slotPassed } from "@/lib/slots";
 
 const DBNAME = "automotivecarcare";
 const COLLECTIONNAME = "bookings";
 
-export async function GET() {
+export async function GET(request) {
+  const denied = requireStaff(request, "manager"); // admin or manager
+  if (denied) return denied;
   try {
     const client = await clientPromise;
     const db = client.db(DBNAME);
@@ -25,8 +29,12 @@ export async function POST(request) {
   try {
     const client = await clientPromise;
     const db = client.db(DBNAME);
-    const body = await request.json();
+    // Customers must be signed in to book (website cookie or app token).
     const user = await currentUser(request).catch(() => null);
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Please sign in to book a service.", signInRequired: true }, { status: 401 });
+    }
+    const body = await request.json();
 
     const requiredFields = ['name', 'email', 'phone', 'service', 'vehicleBrand', 'vehicleModel', 'bookingDate', 'bookingTime'];
     const missingFields = requiredFields.filter(field => !body[field]);
@@ -35,6 +43,28 @@ export async function POST(request) {
         { success: false, error: `Missing required fields: ${missingFields.join(', ')}` },
         { status: 400 }
       );
+    }
+
+    // Time slot: a real slot, not in the past, and not already full (2 cars per hour).
+    if (!DATE_RE.test(body.bookingDate) || !SLOT_TIMES.includes(body.bookingTime)) {
+      return NextResponse.json({ success: false, error: "Please choose a valid date and time." }, { status: 400 });
+    }
+    if (slotPassed(body.bookingDate, body.bookingTime)) {
+      return NextResponse.json({ success: false, error: "That time has passed. Please choose a later slot." }, { status: 400 });
+    }
+    const taken = (await bookedCounts(body.bookingDate))[body.bookingTime] || 0;
+    if (taken >= SLOT_CAPACITY) {
+      return NextResponse.json(
+        { success: false, error: `${body.bookingTime} on ${body.bookingDate} is full. Please choose another time.`, slotFull: true },
+        { status: 409 }
+      );
+    }
+
+    // Home pickup: we collect the car from the customer's address.
+    const wantsPickup = !!body.pickup?.required;
+    const pickupAddress = String(body.pickup?.address || "").trim().slice(0, 300);
+    if (wantsPickup && pickupAddress.length < 8) {
+      return NextResponse.json({ success: false, error: "Please enter the full pickup address." }, { status: 400 });
     }
 
     const bookingData = {
@@ -50,7 +80,10 @@ export async function POST(request) {
       bookingDate: body.bookingDate,
       bookingTime: body.bookingTime,
       notes: body.notes || "",
-      ...(user ? { userId: String(user._id) } : {}), // booked from the app while signed in
+      pickup: wantsPickup
+        ? { required: true, address: pickupAddress, landmark: String(body.pickup?.landmark || "").trim().slice(0, 120) }
+        : { required: false },
+      userId: String(user._id), // the customer's account
       status: "pending",
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -77,6 +110,8 @@ export async function POST(request) {
 }
 
 export async function PUT(request) {
+  const denied = requireStaff(request, "manager"); // admin or manager
+  if (denied) return denied;
   try {
     const client = await clientPromise;
     const db = client.db(DBNAME);
@@ -132,6 +167,8 @@ export async function PUT(request) {
 }
 
 export async function DELETE(request) {
+  const denied = requireStaff(request); // admin only
+  if (denied) return denied;
   try {
     const client = await clientPromise;
     const db = client.db(DBNAME);
